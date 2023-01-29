@@ -2,9 +2,9 @@
 
 namespace MRTech\LaravelDependencyGraph;
 
+use MRTech\LaravelDependencyGraph\Commands\LaravelDependencyGraphCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use MRTech\LaravelDependencyGraph\Commands\LaravelDependencyGraphCommand;
 
 class LaravelDependencyGraphServiceProvider extends PackageServiceProvider
 {
@@ -20,6 +20,7 @@ class LaravelDependencyGraphServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews()
             ->hasMigration('create_laravel-dependency-graph_table')
-            ->hasCommand(LaravelDependencyGraphCommand::class);
+            ->hasCommand(LaravelDependencyGraphCommand::class)
+        ;
     }
 }
