@@ -4,6 +4,13 @@ namespace MRTech\LaravelDependencyGraph\Classes;
 
 class DependencyChecker
 {
+    /**
+     * Get Dependency List.
+     *
+     * @param string $className -
+     * @param bool   $recursive get recursive
+     * @param int    $level     -
+     */
     public function getDependencyList($className, $recursive = true, $level = 1)
     {
         $dependencyList = [];
@@ -26,34 +33,12 @@ class DependencyChecker
 
         $constructor = $class->getConstructor();
         if ($constructor) {
-            foreach ($constructor->getParameters() as $param) {
-                $dependency = $param->getType()->getName();
-                if (!in_array($dependency, $dependencyList)) {
-                    $dependencyList[] = $dependency;
-                    if ($level > 1) {
-                        $dependencyList = [
-                            ...$dependencyList,
-                            ...$this->getDependencyList($dependency, $level - 1),
-                        ];
-                    }
-                }
-            }
+            $dependencyList[] = $this->buildConstructor($constructor, $dependencyList, $level);
         }
         foreach ($class->getProperties() as $property) {
-            if ($property->isPublic() && $property->class == $className) {
-                $property->setAccessible(true);
-                $dependency = get_class($property->getValue($class));
-                if (!in_array($dependency, $dependencyList)) {
-                    $dependencyList[] = $dependency;
-                    if ($level > 1) {
-                        $dependencyList = [
-                            ...$dependencyList,
-                            ...$this->getDependencyList($dependency, $level - 1),
-                        ];
-                    }
-                }
-            }
+            $dependencyList = $this->buildProperty($property, $class, $className, $dependencyList, $level);
         }
+
         foreach ($class->getTraits() as $trait) {
             $dependencyList[] = $trait->getName();
             if ($recursive) {
@@ -67,6 +52,66 @@ class DependencyChecker
         return $dependencyList;
     }
 
+    /**
+     * Build constructor Dependency.
+     *
+     * @param \ReflectionMethod $constructor    -
+     * @param mixed             $dependencyList -
+     * @param mixed             $level          -
+     */
+    public function buildConstructor($constructor, $dependencyList, $level)
+    {
+        foreach ($constructor->getParameters() as $param) {
+            $dependency = $param->getType()->getName();
+            if (!in_array($dependency, $dependencyList)) {
+                $dependencyList[] = $dependency;
+                if ($level > 1) {
+                    $dependencyList = [
+                        ...$dependencyList,
+                        ...$this->getDependencyList($dependency, $level - 1),
+                    ];
+                }
+            }
+        }
+
+        return $dependencyList;
+    }
+
+    /**
+     * Used to build property related dependency.
+     *
+     * @param \ReflectionProperty $property       -
+     * @param object              $class          -
+     * @param string              $className      -
+     * @param array               $dependencyList -
+     * @param int                 $level          -
+     */
+    public function buildProperty($property, $class, $className, $dependencyList, $level)
+    {
+        if ($property->isPublic() && $property->class == $className) {
+            $property->setAccessible(true);
+            $dependency = get_class($property->getValue($class));
+            if (!in_array($dependency, $dependencyList)) {
+                $dependencyList[] = $dependency;
+                if ($level > 1) {
+                    $dependencyList = [
+                        ...$dependencyList,
+                        ...$this->getDependencyList($dependency, $level - 1),
+                    ];
+                }
+            }
+        }
+
+        return $dependencyList;
+    }
+
+    /**
+     * Get array of reflection methods.
+     *
+     * @param string $className -
+     *
+     * @return \ReflectionMethod[]
+     */
     public function getMethods($className)
     {
         $methods = [];
@@ -83,6 +128,13 @@ class DependencyChecker
         return $methods;
     }
 
+    /**
+     * Get Properties.
+     *
+     * @param string $className -
+     *
+     * @return \ReflectionProperty[]
+     */
     public function getProperties($className)
     {
         $properties = [];
