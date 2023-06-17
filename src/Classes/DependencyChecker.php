@@ -7,102 +7,96 @@ class DependencyChecker
     /**
      * Get Dependency List.
      *
-     * @param string $className -
-     * @param bool   $recursive get recursive
-     * @param int    $level     -
+     * @param string         $className      -
+     * @param DependencyData $dependencyData
+     * @param bool           $recursive      get recursive
+     * @param int            $level          -
      */
-    public function getDependencyList($className, $recursive = true, $level = 1)
+    public function getDependencyList($className, $dependencyData = null, $recursive = true, $level = 1)
     {
-        $dependencyList = [];
+        if (empty($dependencyData)) {
+            $dependencyData = new DependencyData($className);
+        }
+        $d = $dependencyData;
         $class = new \ReflectionClass($className);
 
-        if (!$level) {
-            return $this->getDependencyList($className, 1);
+        if (!($level + 1)) {
+            return $d;
         }
 
-        $dependencyList = array_merge($dependencyList, $class->getInterfaceNames());
+        $interfaces = $class->getInterfaceNames();
+        if (!empty($interfaces)) {
+            $d->children[] = $interfaces;
+        }
         if ($parent = $class->getParentClass()) {
-            $dependencyList[] = $parent->getName();
+            $d->parent = $parent->getName();
             if ($recursive) {
-                $dependencyList = [
-                    ...$dependencyList,
-                    ...$this->getDependencyList($parent->getName(), $recursive, $level - 1),
-                ];
+                $d->children[] =
+                    $this->getDependencyList($parent->getName(), null, $recursive, $level - 1)
+                ;
             }
         }
 
         $constructor = $class->getConstructor();
         if ($constructor) {
-            $dependencyList[] = $this->buildConstructor($constructor, $dependencyList, $level);
+            $this->buildConstructor($constructor, $d, $level);
         }
         foreach ($class->getProperties() as $property) {
-            $dependencyList = $this->buildProperty($property, $class, $className, $dependencyList, $level);
+            $this->buildProperty($property, $d, $className, $level);
         }
 
         foreach ($class->getTraits() as $trait) {
-            $dependencyList[] = $trait->getName();
+            $d->traits = $trait->getName();
             if ($recursive) {
-                $dependencyList = [
-                    ...$dependencyList,
-                    ...$this->getDependencyList($trait->getName(), $recursive, $level - 1),
-                ];
+                $d->children[] =
+                    $this->getDependencyList($trait->getName(), null, $recursive, $level - 1)
+                ;
             }
         }
 
-        return $dependencyList;
+        return $d;
     }
 
     /**
      * Build constructor Dependency.
      *
-     * @param \ReflectionMethod $constructor    -
-     * @param mixed             $dependencyList -
-     * @param mixed             $level          -
+     * @param \ReflectionMethod $constructor -
+     * @param mixed             $level       -
      */
-    public function buildConstructor($constructor, $dependencyList, $level)
+    public function buildConstructor(\ReflectionMethod $constructor, DependencyData $dependencyData, $level)
     {
+        $dependencyList = [];
         foreach ($constructor->getParameters() as $param) {
             $dependency = $param->getType()->getName();
-            if (!in_array($dependency, $dependencyList)) {
-                $dependencyList[] = $dependency;
-                if ($level > 1) {
-                    $dependencyList = [
-                        ...$dependencyList,
-                        ...$this->getDependencyList($dependency, $level - 1),
-                    ];
-                }
+            $dependencyData->children[] = $dependency;
+            if ($level > 1) {
+                $dependencyData->children[] =
+                    $this->getDependencyList($dependency, null, true, $level - 1)
+                ;
             }
         }
-
-        return $dependencyList;
     }
 
     /**
      * Used to build property related dependency.
      *
      * @param \ReflectionProperty $property       -
-     * @param object              $class          -
+     * @param DependencyData      $dependencyData -
      * @param string              $className      -
-     * @param array               $dependencyList -
      * @param int                 $level          -
      */
-    public function buildProperty($property, $class, $className, $dependencyList, $level)
+    public function buildProperty(\ReflectionProperty $property, DependencyData $dependencyData, $className, $level)
     {
         if ($property->isPublic() && $property->class == $className) {
             $property->setAccessible(true);
-            $dependency = get_class($property->getValue($class));
-            if (!in_array($dependency, $dependencyList)) {
-                $dependencyList[] = $dependency;
-                if ($level > 1) {
-                    $dependencyList = [
-                        ...$dependencyList,
-                        ...$this->getDependencyList($dependency, $level - 1),
-                    ];
-                }
+            $dependency = $property->getType();
+            $dependencyData->children[] = $dependency->getName();
+            if ($level > 1) {
+                $dependencyData->children =
+                    $this->getDependencyList($dependency, null, true, $level - 1)
+                ;
             }
         }
-
-        return $dependencyList;
     }
 
     /**
