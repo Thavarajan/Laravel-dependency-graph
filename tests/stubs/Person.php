@@ -2,7 +2,7 @@
 
 namespace MRTech\LaravelDependencyGraph\Tests\stubs;
 
-class Manager extends Person
+class Person
 {
-    public string $assistant;
+    public string $name;
 }
