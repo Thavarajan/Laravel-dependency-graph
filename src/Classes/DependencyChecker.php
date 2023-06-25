@@ -19,7 +19,6 @@ class DependencyChecker
         }
         $d = $dependencyData;
         $class = new \ReflectionClass($className);
-
         if (!($level + 1)) {
             return $d;
         }
@@ -29,11 +28,9 @@ class DependencyChecker
             $d->children[] = $interfaces;
         }
         if ($parent = $class->getParentClass()) {
-            $d->parent = $parent->getName();
+            $d->parent = DependencyData::fromClass($parent);
             if ($recursive) {
-                $d->children[] =
-                    $this->getDependencyList($parent->getName(), null, $recursive, $level - 1)
-                ;
+                $this->getDependencyList($parent->getName(), $d->parent, $recursive, $level - 1);
             }
         }
 
@@ -41,7 +38,9 @@ class DependencyChecker
         if ($constructor) {
             $this->buildConstructor($constructor, $d, $level);
         }
-        foreach ($class->getProperties() as $property) {
+        $d->methods = $this->getMethods($class);
+        $d->properties = $this->getProperties($class);
+        foreach ($d->properties as $property) {
             $this->buildProperty($property, $d, $className, $level);
         }
 
@@ -65,10 +64,9 @@ class DependencyChecker
      */
     public function buildConstructor(\ReflectionMethod $constructor, DependencyData $dependencyData, $level)
     {
-        $dependencyList = [];
         foreach ($constructor->getParameters() as $param) {
             $dependency = $param->getType()->getName();
-            $dependencyData->children[] = $dependency;
+            $dependencyData->children[] = DependencyData::fromType($param->getType());
             if ($level > 1) {
                 $dependencyData->children[] =
                     $this->getDependencyList($dependency, null, true, $level - 1)
@@ -80,21 +78,23 @@ class DependencyChecker
     /**
      * Used to build property related dependency.
      *
-     * @param \ReflectionProperty $property       -
-     * @param DependencyData      $dependencyData -
-     * @param string              $className      -
-     * @param int                 $level          -
+     * @param DependencyProperty $property       -
+     * @param DependencyData     $dependencyData -
+     * @param string             $className      -
+     * @param int                $level          -
      */
-    public function buildProperty(\ReflectionProperty $property, DependencyData $dependencyData, $className, $level)
+    public function buildProperty(DependencyProperty $dProperty, DependencyData $dependencyData, $className, $level)
     {
+        $property = $dProperty->getRflectionProperty();
         if ($property->isPublic() && $property->class == $className) {
-            $property->setAccessible(true);
             $dependency = $property->getType();
-            $dependencyData->children[] = $dependency->getName();
-            if ($level > 1) {
-                $dependencyData->children =
-                    $this->getDependencyList($dependency, null, true, $level - 1)
-                ;
+            if ($dependency instanceof \ReflectionClass) {
+                $dependencyData->children[] = DependencyData::fromType($dependency);
+                if ($level > 1) {
+                    $dependencyData->children =
+                        $this->getDependencyList($dependency, null, true, $level - 1)
+                    ;
+                }
             }
         }
     }
@@ -104,19 +104,22 @@ class DependencyChecker
      *
      * @param string $className -
      *
-     * @return \ReflectionMethod[]
+     * @return DependencyMethod[]
      */
     public function getMethods($className)
     {
         $methods = [];
-        $class = new \ReflectionClass($className);
-        foreach ($class->getMethods() as $method) {
-            $methods[] = $method->getName();
+        if ($className instanceof \ReflectionClass) {
+            $class = $className;
+        } else {
+            $class = new \ReflectionClass($className);
         }
+        $methods = DependencyMethod::fromMethod(...$class->getMethods());
         foreach ($class->getTraits() as $trait) {
             foreach ($trait->getMethods() as $method) {
                 $methods[] = $method->getName();
             }
+            array_push($methods, DependencyMethod::fromMethod(...$trait->getMethods()));
         }
 
         return $methods;
@@ -127,25 +130,16 @@ class DependencyChecker
      *
      * @param string $className -
      *
-     * @return \ReflectionProperty[]
+     * @return DependencyProperty[]
      */
     public function getProperties($className)
     {
-        $properties = [];
-        $class = new \ReflectionClass($className);
-        foreach ($class->getProperties() as $property) {
-            $properties[] = $property->getName();
+        if ($className instanceof \ReflectionClass) {
+            $class = $className;
+        } else {
+            $class = new \ReflectionClass($className);
         }
 
-        return $properties;
-    }
-
-    public function getFormattedData($source, $target, $children)
-    {
-        if (empty($children)) {
-            return ['source' => $source, 'target' => $target];
-        }
-
-        return ['source' => $source, 'target' => $target, 'children' => $children];
+        return DependencyProperty::fromReflectionProperty(...$class->getProperties());
     }
 }
