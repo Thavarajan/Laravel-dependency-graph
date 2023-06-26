@@ -7,10 +7,10 @@ class DependencyChecker
     /**
      * Get Dependency List.
      *
-     * @param string         $className      -
-     * @param DependencyData $dependencyData
-     * @param bool           $recursive      get recursive
-     * @param int            $level          -
+     * @param  string  $className      -
+     * @param  DependencyData  $dependencyData
+     * @param  bool  $recursive      get recursive
+     * @param  int  $level          -
      */
     public function getDependencyList($className, $dependencyData = null, $recursive = true, $level = 1)
     {
@@ -19,12 +19,12 @@ class DependencyChecker
         }
         $d = $dependencyData;
         $class = new \ReflectionClass($className);
-        if (!($level + 1)) {
+        if (! ($level + 1)) {
             return $d;
         }
 
         $interfaces = $class->getInterfaceNames();
-        if (!empty($interfaces)) {
+        if (! empty($interfaces)) {
             $d->children[] = $interfaces;
         }
         if ($parent = $class->getParentClass()) {
@@ -48,8 +48,7 @@ class DependencyChecker
             $d->traits = $trait->getName();
             if ($recursive) {
                 $d->children[] =
-                    $this->getDependencyList($trait->getName(), null, $recursive, $level - 1)
-                ;
+                    $this->getDependencyList($trait->getName(), null, $recursive, $level - 1);
             }
         }
 
@@ -59,8 +58,8 @@ class DependencyChecker
     /**
      * Build constructor Dependency.
      *
-     * @param \ReflectionMethod $constructor -
-     * @param mixed             $level       -
+     * @param  \ReflectionMethod  $constructor -
+     * @param  mixed  $level       -
      */
     public function buildConstructor(\ReflectionMethod $constructor, DependencyData $dependencyData, $level)
     {
@@ -69,8 +68,7 @@ class DependencyChecker
             $dependencyData->children[] = DependencyData::fromType($param->getType());
             if ($level > 1) {
                 $dependencyData->children[] =
-                    $this->getDependencyList($dependency, null, true, $level - 1)
-                ;
+                    $this->getDependencyList($dependency, null, true, $level - 1);
             }
         }
     }
@@ -78,10 +76,10 @@ class DependencyChecker
     /**
      * Used to build property related dependency.
      *
-     * @param DependencyProperty $property       -
-     * @param DependencyData     $dependencyData -
-     * @param string             $className      -
-     * @param int                $level          -
+     * @param  DependencyProperty  $property       -
+     * @param  DependencyData  $dependencyData -
+     * @param  string  $className      -
+     * @param  int  $level          -
      */
     public function buildProperty(DependencyProperty $dProperty, DependencyData $dependencyData, $className, $level)
     {
@@ -92,8 +90,7 @@ class DependencyChecker
                 $dependencyData->children[] = DependencyData::fromType($dependency);
                 if ($level > 1) {
                     $dependencyData->children =
-                        $this->getDependencyList($dependency, null, true, $level - 1)
-                    ;
+                        $this->getDependencyList($dependency, null, true, $level - 1);
                 }
             }
         }
@@ -102,8 +99,7 @@ class DependencyChecker
     /**
      * Get array of reflection methods.
      *
-     * @param string $className -
-     *
+     * @param  string  $className -
      * @return DependencyMethod[]
      */
     public function getMethods($className)
@@ -128,8 +124,7 @@ class DependencyChecker
     /**
      * Get Properties.
      *
-     * @param string $className -
-     *
+     * @param  string  $className -
      * @return DependencyProperty[]
      */
     public function getProperties($className)

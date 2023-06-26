@@ -20,7 +20,6 @@ class LaravelDependencyGraphServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews()
             ->hasMigration('create_laravel-dependency-graph_table')
-            ->hasCommand(LaravelDependencyGraphCommand::class)
-        ;
+            ->hasCommand(LaravelDependencyGraphCommand::class);
     }
 }

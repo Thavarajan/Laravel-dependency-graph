@@ -35,7 +35,7 @@ class LaravelDependencyGraphCommand extends Command
         // extract data
         $linkDataArray = $this->dependency->getDependencyList($classname);
 
-        if (!File::exists($destinationPath)) {
+        if (! File::exists($destinationPath)) {
             File::makeDirectory($destinationPath, 0o755, true);
         }
         File::put(

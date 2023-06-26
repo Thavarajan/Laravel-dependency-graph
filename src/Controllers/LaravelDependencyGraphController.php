@@ -17,7 +17,7 @@ class LaravelDependencyGraphController extends Controller
     /**
      * Constructor.
      *
-     * @param DependencyChecker $service Reschedule service
+     * @param  DependencyChecker  $service Reschedule service
      */
     public function __construct(DependencyChecker $service)
     {
